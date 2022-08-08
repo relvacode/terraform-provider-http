@@ -7,7 +7,15 @@ data "http" "example" {
   no_follow_redirects = true
 }
 
-locals {
-  # The redirect URL location can usually be found in the 'Location' response header.
-  example_redirect_uri = data.http.example.response_headers["Location"]
+
+# Make another HTTP request, this time using the redirect location from the first request.
+data "http" "example_redirected_location" {
+  lifecycle {
+    precondition {
+      condition     = contains([302], data.http.example.status_code)
+      error_message = "Server did not respond with a 302 Found HTTP redirect"
+    }
+  }
+
+  url = data.http.example.location
 }

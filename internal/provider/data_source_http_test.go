@@ -363,6 +363,7 @@ func TestDataSource_NoFollowRedirects(t *testing.T) {
 					resource.TestCheckResourceAttr("data.http.http_test", "response_headers.Location", "/200"),
 					resource.TestCheckResourceAttr("data.http.http_test", "response_body", ""),
 					resource.TestCheckResourceAttr("data.http.http_test", "status_code", "302"),
+					resource.TestCheckResourceAttr("data.http.http_test", "location", fmt.Sprintf("%s/200", testHttpMock.server.URL)),
 				),
 			},
 		},
@@ -387,6 +388,7 @@ func TestDataSource_FollowRedirects(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("data.http.http_test", "response_body", "1.0.0"),
 					resource.TestCheckResourceAttr("data.http.http_test", "status_code", "200"),
+					resource.TestCheckResourceAttr("data.http.http_test", "location", fmt.Sprintf("%s/200", testHttpMock.server.URL)),
 				),
 			},
 		},

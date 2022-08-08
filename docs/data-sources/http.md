@@ -130,9 +130,17 @@ data "http" "example" {
   no_follow_redirects = true
 }
 
-locals {
-  # The redirect URL location can usually be found in the 'Location' response header.
-  example_redirect_uri = data.http.example.response_headers["Location"]
+
+# Make another HTTP request, this time using the redirect location from the first request.
+data "http" "example_redirected_location" {
+  lifecycle {
+    precondition {
+      condition     = contains([302], data.http.example.status_code)
+      error_message = "Server did not respond with a 302 Found HTTP redirect"
+    }
+  }
+
+  url = data.http.example.location
 }
 ```
 
@@ -154,6 +162,7 @@ locals {
 
 - `body` (String, Deprecated) The response body returned as a string. **NOTE**: This is deprecated, use `response_body` instead.
 - `id` (String) The URL used for the request.
+- `location` (String) The URL from the request that was sent to obtain the final response. If the final server response included a Location header then this value is set to the absolute path of that location, relative to the URL that made the request.
 - `response_body` (String) The response body returned as a string.
 - `response_headers` (Map of String) A map of response header field names and values. Duplicate headers are concatenated according to [RFC2616](https://www.w3.org/Protocols/rfc2616/rfc2616-sec4.html#sec4.2).
 - `status_code` (Number) The HTTP response status code.

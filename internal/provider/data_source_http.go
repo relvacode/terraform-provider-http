@@ -111,6 +111,13 @@ your control should be treated as untrustworthy.`,
 				Type:        types.Int64Type,
 				Computed:    true,
 			},
+
+			"location": {
+				Description: `The URL from the request that was sent to obtain the final response.` +
+					` If the final server response included a Location header then this value is set to the absolute path of that location, relative to the URL that made the request.`,
+				Type:     types.StringType,
+				Computed: true,
+			},
 		},
 	}, nil
 }
@@ -218,6 +225,22 @@ func (d *httpDataSource) Read(ctx context.Context, req tfsdk.ReadDataSourceReque
 	model.ResponseBody = types.String{Value: responseBody}
 	model.Body = types.String{Value: responseBody}
 	model.StatusCode = types.Int64{Value: int64(response.StatusCode)}
+	model.Location = types.String{Value: response.Request.URL.String()}
+
+	// If the server provided a Location header, then use model.Location as the absolute path
+	// relative to the URL that made the request.
+	if location := response.Header.Get("Location"); location != "" {
+		u, err := response.Request.URL.Parse(location)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Failed to parse the HTTP response Location header URL",
+				fmt.Sprintf("Error parsing Location header URL: %s", err),
+			)
+			return
+		}
+
+		model.Location.Value = u.String()
+	}
 
 	diags = resp.State.Set(ctx, model)
 	resp.Diagnostics.Append(diags...)
@@ -260,4 +283,5 @@ type modelV0 struct {
 	ResponseBody      types.String `tfsdk:"response_body"`
 	Body              types.String `tfsdk:"body"`
 	StatusCode        types.Int64  `tfsdk:"status_code"`
+	Location          types.String `tfsdk:"location"`
 }
