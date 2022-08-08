@@ -344,6 +344,55 @@ func TestDataSource_UnsupportedMethod(t *testing.T) {
 	})
 }
 
+func TestDataSource_NoFollowRedirects(t *testing.T) {
+	testHttpMock := setUpMockHttpServer()
+
+	defer testHttpMock.server.Close()
+
+	resource.UnitTest(t, resource.TestCase{
+		ProtoV5ProviderFactories: protoV5ProviderFactories(),
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+							data "http" "http_test" {
+ 								url = "%s/302"
+								method = "GET"
+								no_follow_redirects = true
+							}`, testHttpMock.server.URL),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("data.http.http_test", "response_headers.Location", "/200"),
+					resource.TestCheckResourceAttr("data.http.http_test", "response_body", ""),
+					resource.TestCheckResourceAttr("data.http.http_test", "status_code", "302"),
+				),
+			},
+		},
+	})
+}
+
+func TestDataSource_FollowRedirects(t *testing.T) {
+	testHttpMock := setUpMockHttpServer()
+
+	defer testHttpMock.server.Close()
+
+	resource.UnitTest(t, resource.TestCase{
+		ProtoV5ProviderFactories: protoV5ProviderFactories(),
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+							data "http" "http_test" {
+ 								url = "%s/302"
+								method = "GET"
+								no_follow_redirects = false
+							}`, testHttpMock.server.URL),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("data.http.http_test", "response_body", "1.0.0"),
+					resource.TestCheckResourceAttr("data.http.http_test", "status_code", "200"),
+				),
+			},
+		},
+	})
+}
+
 type TestHttpMock struct {
 	server *httptest.Server
 }
@@ -360,6 +409,9 @@ func setUpMockHttpServer() *TestHttpMock {
 			case "/200":
 				w.WriteHeader(http.StatusOK)
 				_, _ = w.Write([]byte("1.0.0"))
+			case "/302":
+				w.Header().Set("Location", "/200")
+				w.WriteHeader(http.StatusFound)
 			case "/restricted":
 				if r.Header.Get("Authorization") == "Zm9vOmJhcg==" {
 					w.WriteHeader(http.StatusOK)

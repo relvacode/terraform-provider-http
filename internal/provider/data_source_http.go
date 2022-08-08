@@ -63,6 +63,12 @@ your control should be treated as untrustworthy.`,
 				},
 			},
 
+			"no_follow_redirects": {
+				Description: "Do not follow HTTP redirects.",
+				Type:        types.BoolType,
+				Optional:    true,
+			},
+
 			"request_headers": {
 				Description: "A map of request header field names and values.",
 				Type: types.MapType{
@@ -135,6 +141,12 @@ func (d *httpDataSource) Read(ctx context.Context, req tfsdk.ReadDataSourceReque
 	}
 
 	client := &http.Client{}
+
+	if model.NoFollowRedirects.Value {
+		client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		}
+	}
 
 	request, err := http.NewRequestWithContext(ctx, method, url, requestBody)
 	if err != nil {
@@ -238,13 +250,14 @@ func isContentTypeText(contentType string) bool {
 }
 
 type modelV0 struct {
-	ID              types.String `tfsdk:"id"`
-	URL             types.String `tfsdk:"url"`
-	Method          types.String `tfsdk:"method"`
-	RequestHeaders  types.Map    `tfsdk:"request_headers"`
-	RequestBody     types.String `tfsdk:"request_body"`
-	ResponseHeaders types.Map    `tfsdk:"response_headers"`
-	ResponseBody    types.String `tfsdk:"response_body"`
-	Body            types.String `tfsdk:"body"`
-	StatusCode      types.Int64  `tfsdk:"status_code"`
+	ID                types.String `tfsdk:"id"`
+	URL               types.String `tfsdk:"url"`
+	Method            types.String `tfsdk:"method"`
+	NoFollowRedirects types.Bool   `tfsdk:"no_follow_redirects"`
+	RequestHeaders    types.Map    `tfsdk:"request_headers"`
+	RequestBody       types.String `tfsdk:"request_body"`
+	ResponseHeaders   types.Map    `tfsdk:"response_headers"`
+	ResponseBody      types.String `tfsdk:"response_body"`
+	Body              types.String `tfsdk:"body"`
+	StatusCode        types.Int64  `tfsdk:"status_code"`
 }
